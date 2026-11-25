@@ -1,0 +1,31 @@
+temp path ok
+open a missing file ok
+create new ok
+write ok
+size after write ok
+seek to start ok
+read back ok
+read at the end gives nothing ok
+seek from the end ok
+read after seek ok
+truncate ok
+create new over an existing file fails ok
+open always reports that it existed ok
+open for append ok
+append writes at the end ok
+copy ok
+copy over an existing file fails when asked to ok
+copy over an existing file ok
+attributes of a file ok
+attributes of a folder ok
+attributes of nothing ok
+find ends with no more files ok
+find lists both files ok
+find with the ansi functions ok
+find one exact name ok
+find nothing ok
+delete ok
+delete again fails ok
+full path ok
+full path with a small buffer ok
+all passed

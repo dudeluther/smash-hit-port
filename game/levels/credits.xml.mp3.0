@@ -1,0 +1,5 @@
+<level>
+	<room type="credits/withcoffee" length="160"/>
+	<room type="credits/2" length="100"/>
+	<room type="credits/2" length="100" last="true"/>
+</level>

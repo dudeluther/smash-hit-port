@@ -1,0 +1,42 @@
+register a class ok
+create a window ok
+window procedure is the class procedure ok
+subclassing returns the old procedure ok
+a subclassed message reaches both procedures ok
+window extra bytes start at zero ok
+window extra bytes keep their values ok
+user data ok
+no property yet ok
+set a property ok
+get a property, any case ok
+two properties ok
+remove a property ok
+registered messages are in range ok
+different names get different messages ok
+the same name gets the same message ok
+wait with nothing pending times out ok
+wait reports a signalled handle ok
+wait reports a posted message ok
+the posted message is there ok
+GetMessage lets another thread post ok
+set a timer ok
+the timer fires ok
+kill the timer ok
+a killed timer stays quiet ok
+wsprintfW ok
+wsprintfW widths ok
+command line splits ok
+program name ok
+plain and quoted arguments ok
+backslashes away from quotes stay ok
+escaped quotes ok
+empty argument ok
+guid to string ok
+guid to string with a small buffer ok
+random bytes ok
+random bytes do not repeat every four ok
+two requests differ ok
+bcrypt random bytes ok
+registering many classes is safe ok
+the window still works ok
+all passed

@@ -1,0 +1,40 @@
+realloc keeps the old bytes ok
+realloc zeroes the new bytes after a move ok
+heap size after realloc ok
+realloc zeroes the new bytes in place ok
+env get length ok
+env missing ok
+env set ok
+env get after set, any case ok
+env small buffer returns the size needed ok
+env get ansi ok
+env expand ok
+env expand ansi ok
+env delete ok
+long string size ok
+long string converted ok
+long string back ok
+utf-8 to surrogates ok
+latin-1 bytes ok
+small buffer fails ok
+compare with lengths ok
+compare shorter first ok
+compare ignoring case ok
+lstrcpynW truncates ok
+lstrcpynW with no room ok
+CharUpperW string ok
+CharLowerW string ok
+CharUpperW single ok
+system time to file time ok
+file time to system time ok
+process times are filled in ok
+tls alloc ok
+tls starts empty ok
+tls set and get ok
+tls free ok
+virtual alloc gives zeroed pages ok
+committing again keeps the contents ok
+virtual free ok
+module file name ok
+module file name of kernel32 ok
+all passed

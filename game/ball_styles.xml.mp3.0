@@ -1,0 +1,4 @@
+<ball_styles>
+	<ball_style name="skull" modelDef="skull" scale="2.0 2.0 2.0" enabled="1"/>
+</ball_styles>
+

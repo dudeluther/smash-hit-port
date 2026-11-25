@@ -1,0 +1,4 @@
+<ui texture="shared/popups/cyan_btn.png" selected="shared/popups/overlay_btn.png">
+	<rect coords="0 0 537 137" cmd="script:hide_challenge_welcome"/>
+	<outside cmd="script:hide_challenge_welcome"/>
+</ui>

@@ -1,0 +1,378 @@
+
+function createButton(uiPath, yOffset)
+	button = mgCreateUi(uiPath)
+	mgSetOrigo(button, "center")
+	mgSetPos(button, 0, yOffset)
+	return button
+end
+
+function createText(textId, yOffset, locale)
+	newText = mgCreateUText("smash_light")
+	mgSetColor(newText, 0, 0, 0)
+
+	mgSetPos(newText, 0, 20 + yOffset)
+
+	mgSetUText(newText, textId)
+	mgSetOrigo(newText, "center")
+	return newText
+end
+
+--
+-- more pop-up
+--
+
+function moreGamesPopupCreate(self)
+	local self = {}
+	
+	self.canvas = mgCreateCanvas(1, 1)
+	mgSetAlpha(self.canvas, 0)
+	mgSetOrigo(self.canvas, "center")
+	mgSetPos(self.canvas, centerX, centerY)
+
+	self.backplate = mgCreateImage("popups/more/more_bg.png")
+	mgSetOrigo(self.backplate, "center")
+	mgSetPos(self.backplate, 0, 0)
+
+	local yOffsetCredits = -300;
+	local yOffsetRate 	 = -150;
+	local yOffsetLegal = 0;
+	local yOffsetGames	 = 150;
+	local yOffsetTwitter = 300;
+	local locale = mgGet("game.locale")
+
+	self.buttonCredits = createButton("popups/more/more_credits_btn.xml", yOffsetCredits)
+	self.textButtonCredits = createText("popup_more_credits_btn", yOffsetCredits, locale)
+
+	self.buttonRate = createButton("popups/more/more_rate_btn.xml", yOffsetRate)
+	self.textButtonRate = createText("popup_more_rate_btn", yOffsetRate, locale)
+
+	self.buttonLegal = createButton("popups/more/more_legal_btn.xml", yOffsetLegal)
+	self.textButtonLegal = createText("popup_more_legal_btn", yOffsetLegal, locale)
+
+	self.buttonGames = createButton("popups/more/more_games_btn.xml", yOffsetGames)
+	self.textButtonGames = createText("popup_more_games_btn", yOffsetGames, locale)
+
+	self.buttonTwitter = createButton("popups/more/more_twitter_btn.xml", yOffsetTwitter)
+	self.imageTwitter = mgCreateImage("popups/more/more_twitter_logo.png")
+	mgSetOrigo(self.imageTwitter, "center")
+	mgSetPos(self.imageTwitter, 0, yOffsetTwitter)
+	mgSetScale(self.imageTwitter, 0.5)
+
+	return self
+end
+
+local function moreGamesPopupDraw(self)
+	local alphaValue = mgGetAlpha(self.canvas)
+	local is_visible = alphaValue > 0
+	
+	if is_visible then
+		mgFullScreenColor(0, 0, 0, alphaValue * 0.5)
+		mgPushCanvas(self.canvas)
+		mgDraw(self.backplate)
+		
+		if self.text then
+			mgDraw(self.text)
+		end
+
+		mgDraw(self.buttonCredits)
+		mgDraw(self.textButtonCredits)
+
+		mgDraw(self.buttonRate)
+		mgDraw(self.textButtonRate)
+
+		mgDraw(self.buttonLegal)
+		mgDraw(self.textButtonLegal)
+
+		mgDraw(self.buttonGames)
+		mgDraw(self.textButtonGames)
+
+		mgDraw(self.buttonTwitter)
+		mgDraw(self.imageTwitter)
+
+		mgPopCanvas()
+	end
+
+	return is_visible
+end
+
+
+local function moreGamesPopupShow(self, uiScale)
+	mgSetAlpha(self.canvas, 0)
+	mgSetScale(self.canvas, 1, 0.6)
+	mgSetAlpha(self.canvas, 1, "easeout", 0.15)
+	mgSetScale(self.canvas, 1, 1, "easeout", 0.15)
+
+	mgSetUiModal(self.buttonCredits, true)
+	mgSetUiModal(self.buttonRate, true)
+	mgSetUiModal(self.buttonLegal, true)
+	mgSetUiModal(self.buttonTwitter, true)
+	mgSetUiModal(self.buttonGames, true)
+end
+
+
+local function moreGamesPopupHide(self)
+	local instant = false
+	mgSetUiModal(self.buttonCredits, false)
+	mgSetUiModal(self.buttonRate, false)
+	mgSetUiModal(self.buttonLegal, false)
+	mgSetUiModal(self.buttonTwitter, false)
+	mgSetUiModal(self.buttonGames, false)
+
+	if instant then
+		mgSetAlpha(self.canvas, 0)
+	else
+		mgSetAlpha(self.canvas, 0, "easein", 0.15)
+		mgSetScale(self.canvas, 0.9, 0.7, "easein", 0.15)
+	end
+end
+
+
+local function moreGamesPopupIsVisible(self)
+	return mgGetAlpha(self.canvas) > 0
+end
+
+
+function createMoreGamesPopup()
+		return {create = moreGamesPopupCreate, draw = moreGamesPopupDraw, show = moreGamesPopupShow, hide = moreGamesPopupHide, is_visible = moreGamesPopupIsVisible}
+end
+
+
+--
+-- legal
+-- 
+
+function moreGamesLegalPopupCreate(self)
+	local self = {}
+	
+	self.canvas = mgCreateCanvas(1, 1)
+	mgSetAlpha(self.canvas, 0)
+	mgSetOrigo(self.canvas, "center")
+	mgSetPos(self.canvas, centerX, centerY)
+
+	self.backplate = mgCreateImage("popups/more/more_bg.png")
+	mgSetOrigo(self.backplate, "center")
+	mgSetPos(self.backplate, 0, 0)
+
+	local yOffsetRate 	 = -150;
+	local yOffsetPrivacy = 0;
+	local yOffsetPrivacyOptions	 = 150;
+	local locale = mgGet("game.locale")
+
+	self.buttonRate = createButton("popups/more/more_eula_btn.xml", yOffsetRate)
+	self.textButtonRate = createText("popup_more_eula_btn", yOffsetRate, locale)
+
+	self.buttonPrivacy = createButton("popups/more/more_privacy_btn.xml", yOffsetPrivacy)
+	self.textButtonPrivacy = createText("popup_more_privacy_btn", yOffsetPrivacy, locale)
+
+	self.buttonPrivacyOptions = createButton("popups/more/more_privacy_options_btn.xml", yOffsetPrivacyOptions)
+	self.textButtonPrivacyOptions = createText("popup_more_privacy_options_btn", yOffsetPrivacyOptions, locale)
+
+	return self
+end
+
+local function moreGamesLegalPopupDraw(self)
+	local alphaValue = mgGetAlpha(self.canvas)
+	local is_visible = alphaValue > 0
+	
+	if is_visible then
+		mgFullScreenColor(0, 0, 0, alphaValue * 0.5)
+		mgPushCanvas(self.canvas)
+		mgDraw(self.backplate)
+		
+		if self.text then
+			mgDraw(self.text)
+		end
+
+		mgDraw(self.buttonRate)
+		mgDraw(self.textButtonRate)
+
+		mgDraw(self.buttonPrivacy)
+		mgDraw(self.textButtonPrivacy)
+
+		mgDraw(self.buttonPrivacyOptions)
+		mgDraw(self.textButtonPrivacyOptions)
+
+		mgPopCanvas()
+	end
+
+	return is_visible
+end
+
+
+local function moreGamesLegalPopupShow(self, uiScale)
+	mgSetAlpha(self.canvas, 0)
+	mgSetScale(self.canvas, 1, 0.6)
+	mgSetAlpha(self.canvas, 1, "easeout", 0.15)
+	mgSetScale(self.canvas, 1, 1, "easeout", 0.15)
+
+	mgSetUiModal(self.buttonRate, true)
+	mgSetUiModal(self.buttonPrivacy, true)
+	mgSetUiModal(self.buttonPrivacyOptions, true)
+end
+
+
+local function moreGamesLegalPopupHide(self)
+	mgSetUiModal(self.buttonRate, false)
+	mgSetUiModal(self.buttonPrivacy, false)
+	mgSetUiModal(self.buttonPrivacyOptions, false)
+
+	mgSetAlpha(self.canvas, 0, "easein", 0.15)
+	mgSetScale(self.canvas, 0.9, 0.7, "easein", 0.15)
+end
+
+
+local function moreGamesLegalPopupIsVisible(self)
+	return mgGetAlpha(self.canvas) > 0
+end
+
+
+function createMoreGamesLegalPopup()
+		return {create = moreGamesLegalPopupCreate, draw = moreGamesLegalPopupDraw, show = moreGamesLegalPopupShow, hide = moreGamesLegalPopupHide, is_visible = moreGamesLegalPopupIsVisible}
+end
+
+--
+-- challenge
+--
+
+function challengeCompletedPopupCreate(centerX, centerY)
+	local self = {}
+	
+	local challengeCompletedAspectMultiplier = math.min(mgGetAspectMultiplier(), 1.7543)
+	
+	self.canvas = mgCreateCanvas(1, 1)
+	mgSetAlpha(self.canvas, 0)
+	mgSetOrigo(self.canvas, "center")
+	mgSetPos(self.canvas, centerX, centerY)
+	mgSetScale(self.canvas, challengeCompletedAspectMultiplier, challengeCompletedAspectMultiplier)
+
+	self.backplate = mgCreateImage("shared/popups/challenge/t_challenge_furthestdistance.png")
+	mgSetOrigo(self.backplate, "center")
+	mgSetPos(self.backplate, 0, 0)
+	
+	self.aspectMultiplier = challengeCompletedAspectMultiplier
+
+	local buttonOffsetY = 200;
+	
+	self.btn_ok = mgCreateUi("shared/popups/challenge/challenge_complete_button.xml")
+	mgSetOrigo(self.btn_ok, "center")
+	mgSetPos(self.btn_ok, 0, buttonOffsetY)
+	
+	local titleTextOffsetY = -200
+	local contentTextOffsetY = 0
+	local textWidth = 1200
+
+	self.titleTextOffsetY = titleTextOffsetY
+
+	self.textTitleShadow = mgCreateUText("smash_light")
+	mgSetColor(self.textTitleShadow, 0, 0, 0)
+	mgSetOrigo(self.textTitleShadow, "center")
+	mgSetPos(self.textTitleShadow, 3, titleTextOffsetY + 3)
+	mgSetScale(self.textTitleShadow, 1.4, 1.4)
+	
+	self.textTitle = mgCreateUText("smash_light")
+	mgSetColor(self.textTitle, 1, 1, 1)
+	mgSetOrigo(self.textTitle, "center")
+	mgSetPos(self.textTitle, 0, titleTextOffsetY)
+	mgSetScale(self.textTitle, 1.4, 1.4)
+
+	self.textWidth = textWidth
+	self.contentTextOffsetY = contentTextOffsetY
+
+	self.textContentShadow = mgCreateUText("smash_light")
+	mgSetColor(self.textContentShadow, 0, 0, 0)
+	mgSetOrigo(self.textContentShadow, "center")
+	mgSetPos(self.textContentShadow, 3, contentTextOffsetY + 3)
+	mgSetScale(self.textContentShadow, 0.9, 0.9)
+	
+	self.textContent = mgCreateUText("smash_light")
+	mgSetColor(self.textContent, 0.31, 0.96, 0.996)
+	mgSetOrigo(self.textContent, "center")
+	mgSetPos(self.textContent, 0, contentTextOffsetY)
+	mgSetScale(self.textContent, 0.9, 0.9)
+
+	self.textButton = mgCreateUText("smash_light")
+	mgSetColor(self.textButton, 1, 1, 1)
+	mgSetUText(self.textButton, "popup_button_menu")
+	mgSetOrigo(self.textButton, "center")
+	mgSetPos(self.textButton, 0, buttonOffsetY + 10)
+
+	return self
+end
+
+
+local function challengeCompletedPopupDraw(self)
+	local alphaValue = mgGetAlpha(self.canvas)
+	local is_visible = alphaValue > 0
+	
+	if is_visible then
+		mgFullScreenColor(0, 0, 0, alphaValue * 0.5)
+		mgPushCanvas(self.canvas)
+		mgDraw(self.backplate)
+		mgDraw(self.btn_ok)
+		mgDraw(self.textTitleShadow)
+		mgDraw(self.textTitle)
+		mgDraw(self.textContentShadow)
+		mgDraw(self.textContent)
+		mgDraw(self.textButton)
+		mgPopCanvas()
+	end
+
+	return is_visible
+end
+
+
+local function challengeCompletedPopupShow(self, uiScale)
+	local challengeType = mgGet("game.challengeType")
+	local challengeResultAmount = mgGet("game.challengeResultAmount")
+	
+	-- Set background image based on challenge type
+	local backgroundImage = "shared/popups/challenge/t_challenge_furthestdistance.png"
+	if challengeType == "balls" then
+		backgroundImage = "shared/popups/challenge/t_challenge_ballscollected.png"
+	elseif challengeType == "streak" then
+		backgroundImage = "shared/popups/challenge/t_challenge_longeststreak.png"
+	end
+	mgSetImage(self.backplate, backgroundImage)
+	
+	-- Set title text
+	local titleLocalizationKey = "popup_challenge_completed_title"
+	mgSetUTextArea(self.textTitleShadow, titleLocalizationKey, self.textWidth, "center")
+	mgSetUTextArea(self.textTitle, titleLocalizationKey, self.textWidth, "center")
+	
+	-- Set content text based on challenge type
+	local contentLocalizationKey = "popup_challenge_completed_content_distance"
+	if challengeType == "balls" then
+		contentLocalizationKey = "popup_challenge_completed_content_balls"
+	elseif challengeType == "streak" then
+		contentLocalizationKey = "popup_challenge_completed_content_streak"
+	end
+	
+	mgSetUTextArea(self.textContentShadow, contentLocalizationKey, self.textWidth, "center", "amount", challengeResultAmount)
+	mgSetUTextArea(self.textContent, contentLocalizationKey, self.textWidth, "center", "amount", challengeResultAmount)
+	
+	mgSetAlpha(self.canvas, 0)
+	mgSetScale(self.canvas, self.aspectMultiplier, 0.6 * self.aspectMultiplier)
+	mgSetAlpha(self.canvas, 1, "easeout", 0.15)
+	mgSetScale(self.canvas, self.aspectMultiplier, self.aspectMultiplier, "easeout", 0.15)
+	mgSetUiModal(self.btn_ok, true)
+end
+
+
+local function challengeCompletedPopupHide(self)
+	mgSetUiModal(self.btn_ok, false)
+
+	mgSetAlpha(self.canvas, 0, "easein", 0.15)
+	mgSetScale(self.canvas, 0.9 * self.aspectMultiplier, 0.7 * self.aspectMultiplier, "easein", 0.15)
+	
+end
+
+
+local function challengeCompletedPopupIsVisible(self)
+	return mgGetAlpha(self.canvas) > 0
+end
+
+
+function createChallengeCompletedPopup()
+	return {create = challengeCompletedPopupCreate, draw = challengeCompletedPopupDraw, show = challengeCompletedPopupShow, hide = challengeCompletedPopupHide, is_visible = challengeCompletedPopupIsVisible}
+end
+

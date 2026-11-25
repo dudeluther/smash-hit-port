@@ -1,0 +1,131 @@
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef unsigned long long u64;
+typedef void *HANDLE;
+#define BAD ((HANDLE)(u64)-1)
+
+#define API __declspec(dllimport)
+API HANDLE GetStdHandle(u32);
+API int WriteFile(HANDLE, const void *, u32, u32 *, void *);
+API int ReadFile(HANDLE, void *, u32, u32 *, void *);
+API void ExitProcess(u32);
+API u32 GetLastError(void);
+API void SetLastError(u32);
+API int CreateDirectoryW(const u16 *, void *);
+API HANDLE CreateFileW(const u16 *, u32, u32, void *, u32, u32, HANDLE);
+API int CloseHandle(HANDLE);
+API u32 SetFilePointer(HANDLE, int, int *, u32);
+API u32 GetFileSize(HANDLE, u32 *);
+API int SetEndOfFile(HANDLE);
+API int DeleteFileW(const u16 *);
+API int CopyFileW(const u16 *, const u16 *, int);
+API int MoveFileExW(const u16 *, const u16 *, u32);
+API u32 GetFileAttributesW(const u16 *);
+API HANDLE FindFirstFileW(const u16 *, void *);
+API int FindNextFileW(HANDLE, void *);
+API HANDLE FindFirstFileA(const char *, void *);
+API int FindNextFileA(HANDLE, void *);
+API int FindClose(HANDLE);
+API u32 GetFullPathNameW(const u16 *, u32, u16 *, u16 **);
+API u32 GetTempPathW(u32, u16 *);
+API int SetCurrentDirectoryW(const u16 *);
+
+static HANDLE out;
+static char line[256];
+static int pos, failed;
+
+static void put(const char *s) { while (*s && pos < 250) line[pos++] = *s++; }
+static void num(u64 v) { char t[24]; int n = 0; do { t[n++] = (char)('0' + v % 10); v /= 10; } while (v); while (n) line[pos++] = t[--n]; }
+static void flush(void) { u32 w; line[pos++] = '\n'; WriteFile(out, line, (u32)pos, &w, 0); pos = 0; }
+static void check(const char *name, int ok, u64 got) {
+    put(name); put(ok ? " ok" : " FAIL ");
+    if (!ok) { num(got); failed++; }
+    flush();
+}
+static int weq(const u16 *a, const char *b) { while (*b) if (*a++ != (u16)(u8)*b++) return 0; return *a == 0; }
+static int aeq(const char *a, const char *b) { while (*b) if (*a++ != *b++) return 0; return *a == 0; }
+
+#define DIR L"rexcomp_api2"
+static u8 find[600];
+static u8 data[64];
+
+void start(void) {
+    u32 n = 0;
+    static u16 temp[300];
+    out = GetStdHandle((u32)-11);
+    check("temp path", GetTempPathW(300, temp) > 0 && SetCurrentDirectoryW(temp) != 0, GetLastError());
+    CreateDirectoryW(DIR, 0);
+    DeleteFileW(DIR L"\\one.txt"); DeleteFileW(DIR L"\\two.txt"); DeleteFileW(DIR L"\\three.bin");
+
+    SetLastError(0);
+    HANDLE h = CreateFileW(DIR L"\\missing.txt", 0x80000000u, 1, 0, 3, 0x80, 0);
+    check("open a missing file", h == BAD && GetLastError() == 2, GetLastError());
+    h = CreateFileW(DIR L"\\one.txt", 0xC0000000u, 0, 0, 1, 0x80, 0);
+    check("create new", h != BAD, GetLastError());
+    check("write", WriteFile(h, "hello world", 11, &n, 0) && n == 11, n);
+    check("size after write", GetFileSize(h, 0) == 11, GetFileSize(h, 0));
+    check("seek to start", SetFilePointer(h, 0, 0, 0) == 0, 0);
+    check("read back", ReadFile(h, data, 64, &n, 0) && n == 11 && data[0] == 'h' && data[10] == 'd', n);
+    check("read at the end gives nothing", ReadFile(h, data, 64, &n, 0) && n == 0, n);
+    check("seek from the end", SetFilePointer(h, -5, 0, 2) == 6, 0);
+    check("read after seek", ReadFile(h, data, 3, &n, 0) && n == 3 && data[0] == 'w' && data[2] == 'r', n);
+    SetFilePointer(h, 5, 0, 0);
+    check("truncate", SetEndOfFile(h) && GetFileSize(h, 0) == 5, GetFileSize(h, 0));
+    CloseHandle(h);
+
+    SetLastError(0);
+    h = CreateFileW(DIR L"\\one.txt", 0x40000000u, 0, 0, 1, 0x80, 0);
+    check("create new over an existing file fails", h == BAD && GetLastError() == 80, GetLastError());
+    h = CreateFileW(DIR L"\\one.txt", 0x40000000u, 0, 0, 4, 0x80, 0);
+    check("open always reports that it existed", h != BAD && GetLastError() == 183, GetLastError());
+    CloseHandle(h);
+
+    h = CreateFileW(DIR L"\\one.txt", 4, 0, 0, 3, 0x80, 0);
+    check("open for append", h != BAD, GetLastError());
+    WriteFile(h, "+tail", 5, &n, 0);
+    CloseHandle(h);
+    h = CreateFileW(DIR L"\\one.txt", 0x80000000u, 1, 0, 3, 0x80, 0);
+    n = 0; ReadFile(h, data, 64, &n, 0);
+    check("append writes at the end", n == 10 && data[0] == 'h' && data[4] == 'o' && data[5] == '+' && data[9] == 'l', n);
+    CloseHandle(h);
+
+    check("copy", CopyFileW(DIR L"\\one.txt", DIR L"\\two.txt", 1) != 0, GetLastError());
+    SetLastError(0);
+    check("copy over an existing file fails when asked to", CopyFileW(DIR L"\\one.txt", DIR L"\\two.txt", 1) == 0 && GetLastError() == 80, GetLastError());
+    check("copy over an existing file", CopyFileW(DIR L"\\one.txt", DIR L"\\two.txt", 0) != 0, GetLastError());
+    check("attributes of a file", GetFileAttributesW(DIR L"\\two.txt") != 0xFFFFFFFFu && !(GetFileAttributesW(DIR L"\\two.txt") & 0x10), GetFileAttributesW(DIR L"\\two.txt"));
+    check("attributes of a folder", GetFileAttributesW(DIR) != 0xFFFFFFFFu && (GetFileAttributesW(DIR) & 0x10), GetFileAttributesW(DIR));
+    check("attributes of nothing", GetFileAttributesW(DIR L"\\nothing") == 0xFFFFFFFFu, 0);
+
+    int count = 0, saw_one = 0, saw_two = 0;
+    h = FindFirstFileW(DIR L"\\*.txt", find);
+    if (h != BAD) {
+        do { count++; saw_one |= weq((u16 *)(find + 44), "one.txt"); saw_two |= weq((u16 *)(find + 44), "two.txt"); } while (FindNextFileW(h, find));
+        check("find ends with no more files", GetLastError() == 18, GetLastError());
+        FindClose(h);
+    }
+    check("find lists both files", count == 2 && saw_one && saw_two, (u64)count);
+    count = 0; saw_one = 0;
+    h = FindFirstFileA("rexcomp_api2\\o*", find);
+    if (h != BAD) { do { count++; saw_one |= aeq((char *)(find + 44), "one.txt"); } while (FindNextFileA(h, find)); FindClose(h); }
+    check("find with the ansi functions", count == 1 && saw_one, (u64)count);
+    check("find one exact name", (h = FindFirstFileW(DIR L"\\two.txt", find)) != BAD && *(u32 *)(find + 32) == 10, *(u32 *)(find + 32));
+    if (h != BAD) FindClose(h);
+    SetLastError(0);
+    check("find nothing", FindFirstFileW(DIR L"\\*.nope", find) == BAD && GetLastError() == 2, GetLastError());
+
+    check("delete", DeleteFileW(DIR L"\\two.txt") != 0, GetLastError());
+    SetLastError(0);
+    check("delete again fails", DeleteFileW(DIR L"\\two.txt") == 0 && GetLastError() == 2, GetLastError());
+
+    u16 full[128]; u16 *part = 0;
+    n = GetFullPathNameW(L"C:\\a\\.\\b\\..\\\xE9t\xE9\\file.txt", 128, full, &part);
+    check("full path", n == 17 && full[2] == '\\' && full[5] == 0xE9 && part == full + 9 && weq(part, "file.txt"), n);
+    n = GetFullPathNameW(L"C:\\a\\b\\file.txt", 4, full, 0);
+    check("full path with a small buffer", n == 16, n);
+    DeleteFileW(DIR L"\\one.txt");
+
+    put(failed ? "FAILED " : "all passed"); if (failed) num((u64)failed); flush();
+    ExitProcess((u32)failed);
+}

@@ -1,0 +1,4 @@
+@echo off
+call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 -no_logo
+cd /d %~dp0
+cl /nologo /O2 /MT /EHsc eh1.cpp /Fe:eh1.exe /link /DYNAMICBASE /NXCOMPAT

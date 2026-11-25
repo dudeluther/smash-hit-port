@@ -1,0 +1,27 @@
+popup_out_of_balls_title=まだ遊ぶ
+popup_out_of_balls_amount=+{amount}
+popup_button_continue=再開する
+popup_more_credits_btn=クレジット
+popup_more_rate_btn=ゲームを評価する
+popup_more_privacy_btn=プライバシーポリシー
+popup_more_twitter_btn=Twitter
+popup_more_games_btn=その他ゲーム
+  facebook twitter 
+popup_xpromo_muv_preorder_info_ios=モバイルで『Goat Simulator 3: Multiverse of Nonsense』を予約注文しよう！
+popup_xpromo_muv_preorder_info_android=モバイルで『Goat Simulator 3: Multiverse of Nonsense』に先行登録しよう！
+popup_xpromo_muv_released_info=モバイル版『Goat Simulator 3: Multiverse of Nonsense』が発売中！
+popup_xpromo_btn_getnow=今すぐゲット
+popup_button_menu=メニュー
+popup_challenge_welcome_distance=誰が一番遠くまで行けるか競おう！
+popup_challenge_welcome_balls=できるだけ多くのボールを集めよう！
+popup_challenge_welcome_streak=クリスタルを見逃さずに一番長く持ちこたえよう！
+popup_challenge_welcome_title_distance=サバイバー
+popup_challenge_welcome_title_balls=ボールホグ
+popup_challenge_welcome_title_streak=連勝
+popup_challenge_completed_title=チャレンジラン完了
+popup_challenge_completed_content_distance=距離: {amount}
+popup_challenge_completed_content_balls=最大ボールカウント: {amount}
+popup_challenge_completed_content_streak=最長連勝記録: {amount}
+popup_more_legal_btn=法律情報
+popup_more_eula_btn=利用規約
+popup_more_privacy_options_btn=プライバシー

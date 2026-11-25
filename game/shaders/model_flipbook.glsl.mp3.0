@@ -1,0 +1,68 @@
+uniform mat4 uMvpMatrix;
+uniform mat3 uObjectMatrix;
+uniform sampler2D uTexture0;	// albedo
+uniform sampler2D uTexture1;	// base
+uniform sampler2D uTexture2;	// add, flipbook
+uniform vec4 uLowerFog;
+uniform vec4 uUpperFog;
+uniform float uInstanceTime;
+
+varying vec4 vColor;
+varying vec3 vNormal;
+varying vec4 vTexCoord;
+varying vec4 vFog;
+
+#ifdef VERTEX
+attribute vec3 aPosition;
+attribute vec3 aNormal;
+attribute vec2 aTexCoord;
+attribute vec4 aColor;
+
+const float iNumFramesInFlipBook = 64.0;
+const float iCols = 8.0;
+const float iRows = 8.0;
+const float uScale = 1.0 / iCols;
+const float vScale = 1.0 / iRows;
+
+
+void main(void)
+{
+	gl_Position = uMvpMatrix * vec4(aPosition, 1.0);
+
+	float nearPlane = 0.4;
+	vec4 upperFog = uUpperFog;
+	vec4 lowerFog = uLowerFog;
+	float t = gl_Position.y / (gl_Position.z+nearPlane) * 0.5 + 0.5;
+	vec4 fogColor = mix(lowerFog, upperFog, t);
+	float fog = clamp(0.05 * (-5.0 + gl_Position.z), 0.0, 1.0);
+	vColor =  vec4(aColor.rgb, 0.5) * (2.0 * (1.0-fog)) * aColor.a;
+	vFog = fogColor * fog;
+
+	vTexCoord.xy = aTexCoord.xy;
+
+	float iFrame = (float)mod(floor(uInstanceTime * 20.0), iNumFramesInFlipBook);
+	vTexCoord.z = (float)(mod(iFrame, iCols)) * uScale;
+	vTexCoord.w = floor(iFrame / iRows) * vScale;
+	
+	vNormal = uObjectMatrix * aNormal;
+}
+#endif
+
+#ifdef FRAGMENT
+void main(void) 
+{
+	vec3 albedo = (texture2D(uTexture0, vTexCoord.xy)).rgb;
+	
+	vec3 n = normalize(vNormal);
+	vec2 matcap_uv = vec2(n.x, -n.y) * 0.5 + 0.5;
+	vec3 base_matcap = texture2D(uTexture1, matcap_uv).rgb;
+
+	vec2 matcap_atlas_uv = (matcap_uv * 0.125) + vTexCoord.zw;
+	vec3 add_matcap = texture2D(uTexture2, matcap_atlas_uv).rgb;
+	vec3 lit = (albedo * base_matcap + add_matcap) * vColor.rgb;	// vColor is needed for fog to work properly
+
+	gl_FragColor.rgb = lit + vFog.rgb;
+	gl_FragColor.a = 0.0;
+}
+#endif
+

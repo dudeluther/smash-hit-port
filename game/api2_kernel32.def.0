@@ -1,0 +1,26 @@
+LIBRARY KERNEL32.dll
+EXPORTS
+GetStdHandle
+WriteFile
+ReadFile
+ExitProcess
+GetLastError
+SetLastError
+CreateDirectoryW
+CreateFileW
+CloseHandle
+SetFilePointer
+GetFileSize
+SetEndOfFile
+DeleteFileW
+CopyFileW
+MoveFileExW
+GetFileAttributesW
+FindFirstFileW
+FindNextFileW
+FindFirstFileA
+FindNextFileA
+FindClose
+GetFullPathNameW
+GetTempPathW
+SetCurrentDirectoryW

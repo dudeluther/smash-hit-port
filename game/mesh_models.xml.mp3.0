@@ -1,0 +1,10 @@
+<mesh_models>
+	<mesh_model def="skull" env="level_basic" physics_size="0.1 0.17 0.1" file="models/skull/skull.obj" albedo="models/skull/skull_grey.png" matcap="matcaps/00003.png" addmatcap="matcaps/flipbook.png" shader="shaders/model_flipbook.glsl"/>
+	<mesh_model def="skull2" env="level_basic" physics_size="0.1 0.17 0.1" file="models/skull/skull.obj" albedo="models/skull/skull_grey.png" matcap="matcaps/00034.png" shader="shaders/model.glsl"/>
+	<mesh_model def="skull3" env="level_basic" physics_size="0.1 0.17 0.1" file="models/skull/skull.obj" albedo="models/skull/skull_grey.png" matcap="matcaps/00037.png" shader="shaders/model.glsl"/>
+	<mesh_model def="gecko" env="level_basic" physics_size="0.5 0.5 0.5" file="models/gecko/gecko.obj" albedo="models/gecko/gecko_basecolor.png" matcap="matcaps/00007.png" shader="shaders/model.glsl"/>
+	<mesh_model def="blue_monster" env="level_basic" physics_size="0.5 1.6 0.5" file="models/blue_monster/cutebluemonster.obj" albedo="models/blue_monster/cutemonster_basecolor.png" matcap="matcaps/00045.png" shader="shaders/model.glsl"/>
+	<mesh_model def="blue_monster2" env="level_basic" physics_size="0.5 1.6 0.5" file="models/blue_monster/cutebluemonster.obj" albedo="models/blue_monster/cutemonster_basecolor.png" matcap="matcaps/00037.png" shader="shaders/model.glsl"/>
+	<mesh_model def="blue_monster3" env="level_basic" physics_size="0.5 1.6 0.5" file="models/blue_monster/cutebluemonster.obj" albedo="models/blue_monster/cutemonster_basecolor.png" matcap="matcaps/00002.png" shader="shaders/model.glsl"/>
+</mesh_models>
+

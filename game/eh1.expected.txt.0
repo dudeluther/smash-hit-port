@@ -1,0 +1,9 @@
+﻿plain 16 dtors 11
+caught int 2 dtors 22
+caught runtime_error 'boom 7' dtors 33
+rethrown 'boom 3' dtors 144
+mismatch propagated 'boom 4' dtors 155
+nested 'wrapped: boom 5' dtors 166
+seh inner 2 outer 3
+regs 2478 dtors 210
+loop caught 1000 dtors 1210

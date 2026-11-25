@@ -1,0 +1,77 @@
+// C++ / SEH exception test for rt/win32/seh.c. Built /MT like Unity's modules (static CRT: __CxxFrameHandler4 and
+// __C_specific_handler are lifted from the exe). Output must match the native run line for line.
+#include <cstdio>
+#include <stdexcept>
+#include <string>
+#include <windows.h>
+
+static int g_dtors = 0;
+struct Guard { int id; explicit Guard(int i) : id(i) {} ~Guard() { g_dtors += id; } };
+
+__declspec(noinline) int thrower(int v) {
+    Guard g(1);
+    if (v > 2) throw std::runtime_error("boom " + std::to_string(v));
+    if (v == 2) throw v;
+    return v * 10;
+}
+
+__declspec(noinline) int middle(int v) {
+    Guard g(10);
+    std::string s = "middle";
+    return thrower(v) + (int)s.size();
+}
+
+__declspec(noinline) int rethrower(int v) {
+    try { return middle(v); }
+    catch (...) { Guard g(100); throw; }
+}
+
+__declspec(noinline) int mismatch(int v) {
+    try { return middle(v); }
+    catch (const std::logic_error&) { return -1; }            // runtime_error is not a logic_error: propagates
+}
+
+__declspec(noinline) int nested_new_throw() {
+    try { middle(5); }
+    catch (const std::exception& e) { throw std::string(std::string("wrapped: ") + e.what()); }
+    return 0;
+}
+
+__declspec(noinline) int seh_filter_test(DWORD code) {
+    __try { RaiseException(code, 0, 0, nullptr); return 1; }
+    __except (GetExceptionCode() == 0xE0001234 ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH) { return 2; }
+}
+
+__declspec(noinline) int seh_outer() {
+    __try { return seh_filter_test(0xE0005678); }
+    __except (EXCEPTION_EXECUTE_HANDLER) { return 3; }
+}
+
+__declspec(noinline) long long regs_survive(int n) {
+    // values the compiler keeps in callee-saved registers across the try; they must be intact in the catch
+    volatile int seed = n;
+    long long a = seed * 3, b = seed * 5, c = seed * 7, d = seed * 11, e = seed * 13;
+    long long sum = 0;
+    for (int i = 0; i < 4; i++) {
+        try { sum += middle(i + 1); }
+        catch (int x) { sum += x * 1000 + a + b; }
+        catch (const std::runtime_error& ex) { sum += (long long)strlen(ex.what()) + c + d + e; }
+        a += 1; b += 2; c += 3; d += 4; e += 5;
+    }
+    return sum + a + b + c + d + e;
+}
+
+int main() {
+    std::printf("plain %d dtors %d\n", middle(1), g_dtors);
+    try { middle(2); } catch (int v) { std::printf("caught int %d dtors %d\n", v, g_dtors); }
+    try { middle(7); } catch (const std::runtime_error& e) { std::printf("caught runtime_error '%s' dtors %d\n", e.what(), g_dtors); }
+    try { rethrower(3); } catch (const std::exception& e) { std::printf("rethrown '%s' dtors %d\n", e.what(), g_dtors); }
+    try { mismatch(4); } catch (const std::runtime_error& e) { std::printf("mismatch propagated '%s' dtors %d\n", e.what(), g_dtors); }
+    try { nested_new_throw(); } catch (const std::string& s) { std::printf("nested '%s' dtors %d\n", s.c_str(), g_dtors); }
+    std::printf("seh inner %d outer %d\n", seh_filter_test(0xE0001234), seh_outer());
+    std::printf("regs %lld dtors %d\n", regs_survive(3), g_dtors);
+    int loops = 0;
+    for (int i = 0; i < 1000; i++) { try { thrower(3 + (i & 1)); } catch (const std::exception&) { loops++; } }
+    std::printf("loop caught %d dtors %d\n", loops, g_dtors);
+    return 0;
+}

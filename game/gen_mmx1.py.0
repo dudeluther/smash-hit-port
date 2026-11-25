@@ -1,0 +1,122 @@
+"""Generate tests/mmx1k.asm (one ml64 proc per MMX / integer-SSE instruction form) and tests/mmx1.c (driver that
+feeds every kernel seeded random inputs and prints the results). Real exe output == lifted exe output means the
+lifter's MMX emission matches the CPU. Build: tests\\build_mmx1.cmd. io layout (uint64_t io[8]): A = io[0..1],
+B = io[2..3], OUT = io[4..5], GPR out = io[6]."""
+import os
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+BIN = ['paddb', 'paddw', 'paddd', 'paddq', 'psubb', 'psubw', 'psubd', 'psubq', 'paddsb', 'paddsw', 'psubsb', 'psubsw',
+       'paddusb', 'paddusw', 'psubusb', 'psubusw', 'pmullw', 'pmulhw', 'pmulhuw', 'pmuludq', 'pmaddwd', 'pmaddubsw',
+       'pmulhrsw', 'pand', 'pandn', 'por', 'pxor', 'pcmpeqb', 'pcmpeqw', 'pcmpeqd', 'pcmpgtb', 'pcmpgtw', 'pcmpgtd',
+       'pavgb', 'pavgw', 'pmaxub', 'pminub', 'pmaxsw', 'pminsw', 'psadbw', 'pabsb', 'pabsw', 'pabsd', 'psignb', 'psignw',
+       'psignd', 'punpcklbw', 'punpcklwd', 'punpckldq', 'punpckhbw', 'punpckhwd', 'punpckhdq', 'packuswb', 'packsswb',
+       'packssdw', 'phaddw', 'phaddsw', 'phaddd', 'phsubw', 'phsubd', 'pshufb']
+SHIFT = ['psllw', 'pslld', 'psllq', 'psrlw', 'psrld', 'psrlq', 'psraw', 'psrad']
+XMM_EXTRA = ['paddsb', 'psubsb', 'psignb', 'psignw']
+
+kernels = []                 # (name, body lines, kind) kind: 'm' = mmx out, 'g' = gpr out, 'x' = xmm out, 's' = shift-count input
+
+def k(name, body, kind='m'):
+    kernels.append((name, body, kind))
+
+LDA = ['movq mm0, qword ptr [rcx]', 'movq mm1, qword ptr [rcx+16]']
+ST = ['movq qword ptr [rcx+32], mm0']
+for m in BIN:
+    k(f'{m}_rr', LDA + [f'{m} mm0, mm1'] + ST)
+    msz = 'dword' if m in ('punpcklbw', 'punpcklwd', 'punpckldq') else 'qword'     # MMX low unpacks read an m32
+    k(f'{m}_rm', ['movq mm0, qword ptr [rcx]', f'{m} mm0, {msz} ptr [rcx+16]'] + ST)
+    k(f'{m}_same', ['movq mm0, qword ptr [rcx]', f'{m} mm0, mm0'] + ST)
+for m in SHIFT:
+    for imm in (0, 1, 3, 7, 8, 15, 16, 31, 32, 63, 64, 200):
+        k(f'{m}_i{imm}', ['movq mm0, qword ptr [rcx]', f'{m} mm0, {imm}'] + ST)
+    k(f'{m}_rr', LDA + [f'{m} mm0, mm1'] + ST, 's')
+    k(f'{m}_rm', ['movq mm0, qword ptr [rcx]', f'{m} mm0, qword ptr [rcx+16]'] + ST, 's')
+for imm in (0, 0x1B, 0xE4, 0x55, 0xB1):
+    k(f'pshufw_{imm:x}', ['movq mm1, qword ptr [rcx+16]', f'pshufw mm0, mm1, {imm}'] + ST)
+    k(f'pshufw_m{imm:x}', [f'pshufw mm0, qword ptr [rcx+16], {imm}'] + ST)
+for imm in (0, 1, 3, 7, 8, 9, 15, 16, 20):
+    k(f'palignr_{imm}', LDA + [f'palignr mm0, mm1, {imm}'] + ST)
+for imm in range(5):
+    k(f'pextrw_{imm}', ['movq mm1, qword ptr [rcx]', f'pextrw eax, mm1, {imm}', 'mov qword ptr [rcx+48], rax'], 'g')
+    k(f'pinsrw_{imm}', ['movq mm0, qword ptr [rcx]', 'mov rax, qword ptr [rcx+16]', f'pinsrw mm0, eax, {imm}'] + ST)
+    k(f'pinsrw_m{imm}', ['movq mm0, qword ptr [rcx]', f'pinsrw mm0, word ptr [rcx+16], {imm}'] + ST)
+k('pmovmskb', ['movq mm1, qword ptr [rcx]', 'mov rax, -1', 'pmovmskb eax, mm1', 'mov qword ptr [rcx+48], rax'], 'g')
+k('movd_r2m', ['movq mm0, qword ptr [rcx]', 'mov rax, qword ptr [rcx+16]', 'movd mm0, eax'] + ST)
+k('movd_m2m', ['movq mm0, qword ptr [rcx]', 'movd mm0, dword ptr [rcx+16]'] + ST)
+k('movd_m2r', ['movq mm1, qword ptr [rcx]', 'mov rax, -1', 'movd eax, mm1', 'mov qword ptr [rcx+48], rax'], 'g')
+k('movd_m2mem', ['movq mm1, qword ptr [rcx]', 'movq qword ptr [rcx+32], mm1', 'movq mm2, qword ptr [rcx+16]', 'movd dword ptr [rcx+32], mm2'], 'm')
+k('movq_r2m', ['mov rax, qword ptr [rcx+16]', 'movq mm0, rax'] + ST)
+k('movq_m2r', ['movq mm1, qword ptr [rcx]', 'movq rax, mm1', 'mov qword ptr [rcx+48], rax'], 'g')
+k('movq_mm', ['movq mm3, qword ptr [rcx+16]', 'movq mm0, mm3'] + ST)
+k('movntq', ['movq mm2, qword ptr [rcx+16]', 'movntq qword ptr [rcx+32], mm2'], 'm')
+k('movdq2q', ['movdqu xmm6, xmmword ptr [rcx+16]', 'movdq2q mm0, xmm6'] + ST)
+k('movq2dq', ['movdqu xmm0, xmmword ptr [rcx]', 'movq mm5, qword ptr [rcx+16]', 'movq2dq xmm0, mm5', 'movdqu xmmword ptr [rcx+32], xmm0'], 'x')
+k('maskmovq', ['push rdi', 'movq mm0, qword ptr [rcx]', 'movq mm1, qword ptr [rcx+16]', 'mov rax, 0A5A5A5A5A5A5A5A5h',
+               'mov qword ptr [rcx+32], rax', 'lea rdi, [rcx+32]', 'maskmovq mm0, mm1', 'pop rdi'], 'm')
+k('cvtpi2ps', ['movdqu xmm0, xmmword ptr [rcx]', 'movq mm1, qword ptr [rcx+16]', 'cvtpi2ps xmm0, mm1', 'movdqu xmmword ptr [rcx+32], xmm0'], 'x')
+k('cvtpi2pd', ['movq mm1, qword ptr [rcx+16]', 'cvtpi2pd xmm0, mm1', 'movdqu xmmword ptr [rcx+32], xmm0'], 'x')
+k('cvtps2pi', ['movdqu xmm1, xmmword ptr [rcx]', 'cvtps2pi mm0, xmm1'] + ST, 'f')
+k('cvttps2pi', ['movdqu xmm1, xmmword ptr [rcx]', 'cvttps2pi mm0, xmm1'] + ST, 'f')
+k('cvtpd2pi', ['movdqu xmm1, xmmword ptr [rcx]', 'cvtpd2pi mm0, xmm1'] + ST, 'd')
+k('cvttpd2pi', ['movdqu xmm1, xmmword ptr [rcx]', 'cvttpd2pi mm0, xmm1'] + ST, 'd')
+k('cvtps2pi_m', ['cvtps2pi mm0, qword ptr [rcx]'] + ST, 'f')
+# a loop carrying mm state across a back-edge (lifted preemption point) and a call boundary-free accumulation
+k('loop_acc', ['pxor mm0, mm0', 'movq mm1, qword ptr [rcx+16]', 'mov eax, 37', 'L1_' + '@:', 'paddw mm0, mm1', 'psllq mm1, 1',
+               'pxor mm1, qword ptr [rcx]', 'dec eax', 'jnz L1_@'] + ST)
+for m in XMM_EXTRA:
+    k(f'x_{m}', ['movdqu xmm0, xmmword ptr [rcx]', 'movdqu xmm1, xmmword ptr [rcx+16]', f'{m} xmm0, xmm1', 'movdqu xmmword ptr [rcx+32], xmm0'], 'x')
+for imm in range(8):
+    k(f'x_mpsadbw_{imm}', ['movdqu xmm0, xmmword ptr [rcx]', 'movdqu xmm1, xmmword ptr [rcx+16]', f'mpsadbw xmm0, xmm1, {imm}', 'movdqu xmmword ptr [rcx+32], xmm0'], 'x')
+
+asm = ['; generated by gen_mmx1.py', '.code']
+for i, (name, body, kind) in enumerate(kernels):
+    asm.append(f'k_{name} PROC')
+    for line in body: asm.append('    ' + line.replace('@', str(i)).replace('L1_' + str(i) + ':', f'L1_{i}:'))
+    asm += ['    emms', '    ret', f'k_{name} ENDP', '']
+asm.append('END')
+open(os.path.join(HERE, 'mmx1k.asm'), 'w', newline='\r\n').write('\n'.join(asm) + '\n')
+
+c = ['/* generated by gen_mmx1.py */', '#include <stdio.h>', '#include <stdint.h>', '#include <string.h>']
+c += [f'void k_{n}(uint64_t* io);' for n, _, _ in kernels]
+c += ['typedef struct { const char* name; void (*fn)(uint64_t*); char kind; } K;', 'static const K ks[] = {']
+c += [f'  {{"{n}", k_{n}, \'{kind}\'}},' for n, _, kind in kernels]
+c += ['};', r'''
+static uint64_t s = 0x9E3779B97F4A7C15ull;
+static uint64_t rnd(void) { s ^= s << 13; s ^= s >> 7; s ^= s << 17; return s; }
+static uint64_t special(int i) {               /* edge values mixed into the random stream */
+    static const uint64_t v[] = {0, ~0ull, 0x8000800080008000ull, 0x7FFF7FFF7FFF7FFFull, 0x8080808080808080ull, 0x7F7F7F7F7F7F7F7Full,
+        0x8000000080000000ull, 0x7FFFFFFF7FFFFFFFull, 0x00FF00FF00FF00FFull, 0x0102030405060708ull};
+    return v[i % 10];
+}
+static uint64_t flt_pair(void) {                /* two floats: mostly in int range, some huge / NaN / halves */
+    uint32_t r[2]; for (int j = 0; j < 2; j++) { uint64_t x = rnd(); float f;
+        switch (x % 5) { case 0: f = (float)((int32_t)(x >> 8) % 100000) / 7.0f; break; case 1: f = (float)(int32_t)(x >> 16) * 1.5f; break;
+            case 2: f = (float)((int64_t)(x >> 3) % 9) + 0.5f; break; case 3: f = -(float)((x >> 4) % 1000) - 0.5f; break; default: { uint32_t b = (uint32_t)(x >> 32); memcpy(&f, &b, 4); } }
+        memcpy(&r[j], &f, 4); }
+    return (uint64_t)r[0] | ((uint64_t)r[1] << 32);
+}
+static uint64_t dbl(void) { uint64_t x = rnd(); double d; switch (x % 4) { case 0: d = (double)((int64_t)(x >> 8) % 3000000000ll) / 3.0; break;
+    case 1: d = (double)((int32_t)(x >> 20)) + 0.5; break; case 2: d = -(double)((x >> 5) % 100) - 0.5; break; default: { uint64_t b = rnd(); memcpy(&d, &b, 8); } } uint64_t r; memcpy(&r, &d, 8); return r; }
+int main(void) {
+    uint64_t io[8];
+    for (size_t n = 0; n < sizeof ks / sizeof ks[0]; n++) {
+        unsigned long long h = 1469598103934665603ull;
+        for (int it = 0; it < 64; it++) {
+            for (int j = 0; j < 8; j++) io[j] = it < 10 && j < 4 ? special(it + j) : rnd();
+            if (ks[n].kind == 's') { io[2] = rnd() % 72; }
+            if (ks[n].kind == 'f') { io[0] = flt_pair(); io[1] = flt_pair(); }
+            if (ks[n].kind == 'd') { io[0] = dbl(); io[1] = dbl(); }
+            io[4] = io[5] = io[6] = 0x1111111111111111ull;
+            ks[n].fn(io);
+            uint64_t outv[3] = {io[4], ks[n].kind == 'x' ? io[5] : 0, io[6]};
+            if (it < 3) printf("%-16s %016llx %016llx %016llx\n", ks[n].name, (unsigned long long)outv[0], (unsigned long long)outv[1], (unsigned long long)outv[2]);
+            for (int j = 0; j < 3; j++) { h ^= outv[j]; h *= 1099511628211ull; }
+        }
+        printf("%-16s hash %016llx\n", ks[n].name, h);
+    }
+    printf("done %d kernels\n", (int)(sizeof ks / sizeof ks[0]));
+    return 0;
+}
+''']
+open(os.path.join(HERE, 'mmx1.c'), 'w', newline='\n').write('\n'.join(c))
+print(len(kernels), 'kernels')

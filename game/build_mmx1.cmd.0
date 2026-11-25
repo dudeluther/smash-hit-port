@@ -1,0 +1,7 @@
+@echo off
+call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 -no_logo
+cd /d %~dp0
+python gen_mmx1.py || exit /b 1
+ml64 /nologo /c /Fo mmx1k.obj mmx1k.asm || exit /b 1
+cl /nologo /O2 /MT mmx1.c mmx1k.obj /Fe:mmx1.exe /link /DYNAMICBASE /NXCOMPAT || exit /b 1
+mmx1.exe > mmx1.expected.txt

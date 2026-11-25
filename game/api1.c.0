@@ -1,0 +1,176 @@
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef unsigned long long u64;
+typedef void *HANDLE;
+typedef struct { u16 year, month, dow, day, hour, minute, second, ms; } SYSTEMTIME;
+
+#define API __declspec(dllimport)
+API HANDLE GetStdHandle(u32);
+API int WriteFile(HANDLE, const void *, u32, u32 *, void *);
+API void ExitProcess(u32);
+API u32 GetLastError(void);
+API void SetLastError(u32);
+API HANDLE GetProcessHeap(void);
+API void *HeapAlloc(HANDLE, u32, u64);
+API void *HeapReAlloc(HANDLE, u32, void *, u64);
+API int HeapFree(HANDLE, u32, void *);
+API u64 HeapSize(HANDLE, u32, const void *);
+API u32 GetEnvironmentVariableW(const u16 *, u16 *, u32);
+API u32 GetEnvironmentVariableA(const char *, char *, u32);
+API int SetEnvironmentVariableW(const u16 *, const u16 *);
+API u32 ExpandEnvironmentStringsW(const u16 *, u16 *, u32);
+API u32 ExpandEnvironmentStringsA(const char *, char *, u32);
+API int MultiByteToWideChar(u32, u32, const char *, int, u16 *, int);
+API int WideCharToMultiByte(u32, u32, const u16 *, int, char *, int, const char *, int *);
+API int CompareStringA(u32, u32, const char *, int, const char *, int);
+API u16 *lstrcpynW(u16 *, const u16 *, int);
+API HANDLE GetCurrentProcess(void);
+API int GetProcessTimes(HANDLE, u64 *, u64 *, u64 *, u64 *);
+API void GetSystemTimeAsFileTime(u64 *);
+API int SystemTimeToFileTime(const SYSTEMTIME *, u64 *);
+API int FileTimeToSystemTime(const u64 *, SYSTEMTIME *);
+API u32 TlsAlloc(void);
+API int TlsSetValue(u32, void *);
+API void *TlsGetValue(u32);
+API int TlsFree(u32);
+API void *VirtualAlloc(void *, u64, u32, u32);
+API int VirtualFree(void *, u64, u32);
+API u32 GetModuleFileNameW(HANDLE, u16 *, u32);
+API HANDLE GetModuleHandleW(const u16 *);
+API u16 *CharUpperW(u16 *);
+API u16 *CharLowerW(u16 *);
+
+static HANDLE out;
+static char line[256];
+static int pos, failed;
+
+static void put(const char *s) { while (*s && pos < 250) line[pos++] = *s++; }
+static void num(u64 v) { char t[24]; int n = 0; do { t[n++] = (char)('0' + v % 10); v /= 10; } while (v); while (n) line[pos++] = t[--n]; }
+static void flush(void) { u32 w; line[pos++] = '\n'; WriteFile(out, line, (u32)pos, &w, 0); pos = 0; }
+static void check(const char *name, int ok, u64 got) {
+    put(name); put(ok ? " ok" : " FAIL ");
+    if (!ok) { num(got); failed++; }
+    flush();
+}
+static int weq(const u16 *a, const char *b) { while (*b) if (*a++ != (u16)(u8)*b++) return 0; return *a == 0; }
+static int wlen(const u16 *a) { int n = 0; while (a[n]) n++; return n; }
+
+static u8 big[20001];
+static u16 wide[20002];
+static char back[20002];
+
+void start(void) {
+    out = GetStdHandle((u32)-11);
+    HANDLE heap = GetProcessHeap();
+
+    u8 *p = (u8 *)HeapAlloc(heap, 0, 24);
+    for (int i = 0; i < 24; i++) p[i] = 0xAA;
+    u8 *q = (u8 *)HeapReAlloc(heap, 8, p, 4096);
+    int kept = 1, zero = 1;
+    for (int i = 0; i < 24; i++) kept &= q[i] == 0xAA;
+    for (int i = 24; i < 4096; i++) zero &= q[i] == 0;
+    check("realloc keeps the old bytes", kept, 0);
+    check("realloc zeroes the new bytes after a move", zero, 0);
+    check("heap size after realloc", HeapSize(heap, 0, q) == 4096, HeapSize(heap, 0, q));
+    HeapFree(heap, 0, q);
+    p = (u8 *)HeapAlloc(heap, 0, 40);
+    for (int i = 0; i < 40; i++) p[i] = 0xBB;
+    p = (u8 *)HeapReAlloc(heap, 0, p, 20);
+    p = (u8 *)HeapReAlloc(heap, 8, p, 40);
+    zero = 1;
+    for (int i = 20; i < 40; i++) zero &= p[i] == 0;
+    check("realloc zeroes the new bytes in place", zero, 0);
+    HeapFree(heap, 0, p);
+
+    u16 buf[64];
+    u32 n = GetEnvironmentVariableW(L"USERNAME", buf, 64);
+    check("env get length", n == (u32)wlen(buf) && n > 0, n);
+    SetLastError(0);
+    n = GetEnvironmentVariableW(L"REXCOMP_NO_SUCH_VARIABLE", buf, 64);
+    check("env missing", n == 0 && GetLastError() == 203, GetLastError());
+    check("env set", SetEnvironmentVariableW(L"RexTest", L"value one") != 0, 0);
+    n = GetEnvironmentVariableW(L"REXTEST", buf, 64);
+    check("env get after set, any case", n == 9 && weq(buf, "value one"), n);
+    n = GetEnvironmentVariableW(L"RexTest", buf, 4);
+    check("env small buffer returns the size needed", n == 10, n);
+    char abuf[64];
+    n = GetEnvironmentVariableA("RexTest", abuf, 64);
+    check("env get ansi", n == 9 && abuf[0] == 'v' && abuf[8] == 'e' && abuf[9] == 0, n);
+    n = ExpandEnvironmentStringsW(L"a%RexTest%b%nope%c", buf, 64);
+    check("env expand", n == 19 && weq(buf, "avalue oneb%nope%c"), n);
+    n = ExpandEnvironmentStringsA("[%REXTEST%]", abuf, 64);
+    check("env expand ansi", n == 12 && abuf[0] == '[' && abuf[1] == 'v' && abuf[10] == ']', n);
+    SetEnvironmentVariableW(L"RexTest", 0);
+    SetLastError(0);
+    n = GetEnvironmentVariableW(L"RexTest", buf, 64);
+    check("env delete", n == 0 && GetLastError() == 203, n);
+
+    for (int i = 0; i < 20000; i++) big[i] = (u8)('a' + i % 26);
+    big[20000] = 0;
+    int m = MultiByteToWideChar(65001, 0, (const char *)big, -1, 0, 0);
+    check("long string size", m == 20001, (u64)m);
+    m = MultiByteToWideChar(65001, 0, (const char *)big, -1, wide, 20002);
+    check("long string converted", m == 20001 && wide[19999] == (u16)('a' + 19999 % 26) && wide[20000] == 0, (u64)m);
+    m = WideCharToMultiByte(65001, 0, wide, -1, back, 20002, 0, 0);
+    check("long string back", m == 20001 && back[19999] == (char)('a' + 19999 % 26), (u64)m);
+    m = MultiByteToWideChar(65001, 0, "\xE2\x82\xAC\xF0\x9F\x98\x80", 7, wide, 8);
+    check("utf-8 to surrogates", m == 3 && wide[0] == 0x20AC && wide[1] == 0xD83D && wide[2] == 0xDE00, (u64)m);
+    m = MultiByteToWideChar(1252, 0, "\xE9t\xE9", 3, wide, 8);
+    check("latin-1 bytes", m == 3 && wide[0] == 0xE9 && wide[2] == 0xE9, (u64)m);
+    SetLastError(0);
+    m = MultiByteToWideChar(65001, 0, "abcdef", 6, wide, 3);
+    check("small buffer fails", m == 0 && GetLastError() == 122, GetLastError());
+
+    check("compare with lengths", CompareStringA(0x409, 0, "abcX", 3, "abcY", 3) == 2, 0);
+    check("compare shorter first", CompareStringA(0x409, 0, "abc", 3, "abcd", 4) == 1, 0);
+    check("compare ignoring case", CompareStringA(0x409, 1, "HeLLo", -1, "hello", -1) == 2, 0);
+
+    u16 w[16];
+    for (int i = 0; i < 16; i++) w[i] = 0x7777;
+    lstrcpynW(w, L"abcdef", 4);
+    check("lstrcpynW truncates", w[0] == 'a' && w[2] == 'c' && w[3] == 0 && w[4] == 0x7777, w[3]);
+    lstrcpynW(w + 8, L"abcdef", 0);
+    check("lstrcpynW with no room", w[8] == 0x7777, w[8]);
+    lstrcpynW(w, L"Mixed Case 9", 16);
+    CharUpperW(w);
+    check("CharUpperW string", weq(w, "MIXED CASE 9"), w[1]);
+    CharLowerW(w);
+    check("CharLowerW string", weq(w, "mixed case 9"), w[0]);
+    check("CharUpperW single", (u64)CharUpperW((u16 *)(u64)'q') == 'Q', (u64)CharUpperW((u16 *)(u64)'q'));
+
+    SYSTEMTIME st = { 2024, 2, 0, 29, 12, 34, 56, 789 }, st2;
+    u64 ft = 0;
+    SystemTimeToFileTime(&st, &ft);
+    check("system time to file time", ft == 133536836967890000ull, ft / 10000000ull);
+    FileTimeToSystemTime(&ft, &st2);
+    check("file time to system time", st2.year == 2024 && st2.month == 2 && st2.day == 29 && st2.dow == 4 && st2.hour == 12 && st2.minute == 34 && st2.second == 56 && st2.ms == 789, st2.dow);
+
+    u64 t[4] = { 0xCCCCCCCCCCCCCCCCull, 0xCCCCCCCCCCCCCCCCull, 0xCCCCCCCCCCCCCCCCull, 0xCCCCCCCCCCCCCCCCull }, now;
+    GetSystemTimeAsFileTime(&now);
+    int ok = GetProcessTimes(GetCurrentProcess(), &t[0], &t[1], &t[2], &t[3]);
+    check("process times are filled in", ok && t[0] <= now && t[0] > 116444736000000000ull && t[2] < 864000000000ull && t[3] < 864000000000ull, t[3]);
+
+    u32 slot = TlsAlloc();
+    check("tls alloc", slot != 0xFFFFFFFFu, slot);
+    check("tls starts empty", TlsGetValue(slot) == 0, 0);
+    TlsSetValue(slot, (void *)0x1234);
+    check("tls set and get", (u64)TlsGetValue(slot) == 0x1234, (u64)TlsGetValue(slot));
+    check("tls free", TlsFree(slot) != 0, 0);
+
+    u8 *v = (u8 *)VirtualAlloc(0, 0x30000, 0x3000, 4);
+    zero = v != 0;
+    for (int i = 0; v && i < 0x30000; i += 0x800) zero &= v[i] == 0;
+    check("virtual alloc gives zeroed pages", zero, 0);
+    if (v) { v[0x1000] = 7; VirtualAlloc(v, 0x30000, 0x1000, 4); }
+    check("committing again keeps the contents", v && v[0x1000] == 7, 0);
+    check("virtual free", v && VirtualFree(v, 0, 0x8000) != 0, 0);
+
+    n = GetModuleFileNameW(0, buf, 64);
+    check("module file name", n > 4 && n == (u32)wlen(buf) && buf[n - 4] == '.', n);
+    n = GetModuleFileNameW(GetModuleHandleW(L"kernel32.dll"), buf, 64);
+    check("module file name of kernel32", n > 12 && weq(buf + n - 12, "kernel32.dll"), n);
+
+    put(failed ? "FAILED " : "all passed"); if (failed) num((u64)failed); flush();
+    ExitProcess((u32)failed);
+}

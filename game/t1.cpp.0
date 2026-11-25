@@ -1,0 +1,68 @@
+// Lifter test program: integer/float/SSE/switch/vtable/function-pointer/CRT coverage. Output must match natively.
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <stdint.h>
+
+struct Shape { virtual double area() const = 0; virtual const char* name() const = 0; virtual ~Shape() {} };
+struct Circle : Shape { double r; Circle(double r) : r(r) {} double area() const override { return 3.14159265358979 * r * r; } const char* name() const override { return "circle"; } };
+struct Rect : Shape { double w, h; Rect(double w, double h) : w(w), h(h) {} double area() const override { return w * h; } const char* name() const override { return "rect"; } };
+
+static int g_ctor_ran = 0;
+struct Init { Init() { g_ctor_ran = 42; } } g_init;
+
+__declspec(noinline) int classify(int x) {
+    switch (x) {                       // dense switch -> jump table
+        case 0: return 10; case 1: return 11; case 2: return 12; case 3: return 13; case 4: return 14;
+        case 5: return 15; case 6: return 16; case 7: return 17; case 8: return 18; case 9: return 19;
+        case 10: return 100; case 11: return 110; case 12: return 120; case 13: return 130;
+        default: return -1;
+    }
+}
+
+typedef int (*binop)(int, int);
+__declspec(noinline) int add(int a, int b) { return a + b; }
+__declspec(noinline) int mul(int a, int b) { return a * b; }
+__declspec(noinline) int sub(int a, int b) { return a - b; }
+
+static int cmp_int(const void* a, const void* b) { return *(const int*)a - *(const int*)b; }
+
+__declspec(noinline) uint64_t mix64(uint64_t x) { x ^= x >> 33; x *= 0xff51afd7ed558ccdULL; x ^= x >> 33; x *= 0xc4ceb9fe1a85ec53ULL; x ^= x >> 33; return x; }
+
+struct Big { float v[16]; };
+__declspec(noinline) Big scale(Big b, float s) { for (int i = 0; i < 16; i++) b.v[i] *= s; return b; }
+
+__declspec(noinline) float dot(const float* a, const float* b, int n) { float s = 0; for (int i = 0; i < n; i++) s += a[i] * b[i]; return s; }
+
+int main(int argc, char** argv) {
+    printf("hello from t1, argc=%d ctor=%d\n", argc, g_ctor_ran);
+    // integers
+    int acc = 0; for (int i = -3; i < 20; i++) acc += classify(i) * (i + 1);
+    printf("switch acc=%d\n", acc);
+    binop ops[3] = { add, mul, sub }; int r = 7;
+    for (int i = 0; i < 9; i++) r = ops[i % 3](r, i + 2);
+    printf("fnptr r=%d\n", r);
+    uint64_t h = 0x123456789abcdefULL; for (int i = 0; i < 5; i++) h = mix64(h + i);
+    printf("mix64=%016llx div=%llu mod=%llu\n", h, h / 1234567ULL, h % 1234567ULL);
+    int64_t sd = -1234567890123LL; printf("idiv %lld %lld %d\n", sd / 7, sd % 7, (int)(sd >> 7));
+    unsigned bits = 0x00f0f000u; printf("bits ctz=%d clz=%d pop=%d\n", 0, 0, __popcnt(bits));
+    // floats / SSE
+    float a[8], b[8]; for (int i = 0; i < 8; i++) { a[i] = (float)i * 0.5f; b[i] = 2.0f - (float)i; }
+    printf("dot=%.4f sqrt=%.5f sin=%.6f pow=%.3f\n", dot(a, b, 8), sqrtf(dot(a, a, 8)), sin(1.25), pow(2.5, 3.5));
+    Big big; for (int i = 0; i < 16; i++) big.v[i] = (float)(i * i); big = scale(big, 0.25f);
+    float sum = 0; for (int i = 0; i < 16; i++) sum += big.v[i]; printf("big sum=%.2f\n", sum);
+    int fi = (int)(-7.75f); int fr = (int)floorf(-7.75f); printf("cvt %d %d %d\n", fi, fr, (int)(3.99999f));
+    double dv = 1e10; printf("dbl %.1f %g %d\n", dv / 3.0, dv * 2.5e-4, (int)(dv > 5e9));
+    // vtables
+    Shape* shapes[3] = { new Circle(1.5), new Rect(2.0, 3.5), new Circle(0.5) };
+    double total = 0; for (int i = 0; i < 3; i++) { printf("%s %.3f\n", shapes[i]->name(), shapes[i]->area()); total += shapes[i]->area(); delete shapes[i]; }
+    printf("total %.3f\n", total);
+    // CRT
+    int arr[10] = { 9, 3, 7, 1, 8, 2, 6, 0, 5, 4 }; qsort(arr, 10, sizeof(int), cmp_int);
+    char buf[128] = { 0 }; for (int i = 0; i < 10; i++) { char t[8]; sprintf(t, "%d,", arr[i]); strcat(buf, t); }
+    printf("sorted %s len=%d\n", buf, (int)strlen(buf));
+    char* m = (char*)malloc(1000); memset(m, 'x', 999); m[999] = 0; printf("malloc %d %c\n", (int)strlen(m), m[500]); free(m);
+    printf("done\n");
+    return 0;
+}

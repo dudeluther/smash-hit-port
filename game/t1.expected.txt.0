@@ -1,0 +1,17 @@
+﻿hello from t1, argc=1 ctor=42
+switch acc=6578
+fnptr r=1511
+mix64=2402b7dd520a0c6a div=2101820716502 mod=1148048
+idiv -176366841446 -1 -1055127050
+bits ctz=0 clz=0 pop=8
+dot=-42.0000 sqrt=5.91608 sin=0.948985 pow=24.705
+big sum=310.00
+cvt -7 -8 3
+dbl 3333333333.3 2.5e+06 1
+circle 7.069
+rect 7.000
+circle 0.785
+total 14.854
+sorted 0,1,2,3,4,5,6,7,8,9, len=20
+malloc 999 x
+done

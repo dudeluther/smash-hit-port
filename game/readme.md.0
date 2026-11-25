@@ -1,0 +1,30 @@
+# x64 kit test programs
+
+`python test_web.py` lifts each program here, builds it for the web and compares its output in a headless browser.
+
+| Program | What it covers | Built by |
+|---|---|---|
+| `eh1` | C++ exceptions | `build_eh1.cmd` (MSVC) |
+| `mmx1` | MMX instructions | `build_mmx1.cmd` (MSVC) |
+| `t1` | CRT, math, strings; needs the two CRT DLLs from Windows | `build_native.cmd` (MSVC) |
+| `api1` | Win32 calls: heap, environment, string conversion, time, TLS, virtual memory, module names | the commands below (LLVM, any OS) |
+| `api2` | Win32 file calls: create, read, write, append, seek, truncate, copy, delete, find, full paths | as `api1`, with `api2_kernel32.def` |
+| `api3` | Windows, messages and helpers: subclassing, extra bytes, properties, registered messages, waits, timers, `wsprintfW`, command line splitting, GUID strings, random bytes | as `api1`, with the six `api3_*.def` files |
+
+## api1, api2 and api3
+
+None has a C runtime. `api2` works in a folder it creates under the temp path. Every check prints `<name> ok`
+or `<name> FAIL <value>`, so each `.expected.txt` is the list of names. The expected values come from the Windows
+documentation; the programs are plain Windows executables, so running them on Windows checks the tests themselves.
+
+`api3` reaches its window procedures and thread entry through a table of pointers, so the lifter finds them
+as code.
+
+```bash
+llvm-dlltool -m i386:x86-64 -d api1_kernel32.def -l kernel32.lib
+llvm-dlltool -m i386:x86-64 -d api1_user32.def -l user32.lib
+clang --target=x86_64-pc-windows-msvc -O1 -ffreestanding -fno-builtin -fno-stack-protector -c api1.c -o api1.obj
+lld-link /entry:start /subsystem:console /nodefaultlib /out:api1.exe api1.obj kernel32.lib user32.lib
+```
+
+A new import needs a line in the matching `.def` file.

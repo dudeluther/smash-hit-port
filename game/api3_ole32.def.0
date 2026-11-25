@@ -1,0 +1,3 @@
+LIBRARY ole32.dll
+EXPORTS
+StringFromGUID2
