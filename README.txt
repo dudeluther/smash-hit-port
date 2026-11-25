@@ -7,7 +7,8 @@ index.html is the page; it loads rexcomp.wasm.00/.01, manifest.json, image.bin a
 1. The page is pinned to the jsDelivr copy of this repo with:
        <base href="https://cdn.jsdelivr.net/gh/dudeluther/smash-hit-port@main/">
    Change that line only if the repo or branch changes. If index.html is served beside the files
-   and should use local assets instead, use <base href="./">.
+   and should use local assets instead, use <base href="./">. A saved copy opened with file://
+   automatically uses the pinned CDN root for the engine and game data.
 
 2. Open the page over HTTP(S), for example:
    https://cdn.jsdelivr.net/gh/USER/REPO@main/index.html
@@ -17,7 +18,8 @@ index.html is the page; it loads rexcomp.wasm.00/.01, manifest.json, image.bin a
 3. Limits: the largest file is 19.9 MB (jsDelivr's per-file limit is 20 MB; GitHub allows 100 MB).
    Total bundle is about 100 MB. Keep the original filenames.
 
-4. Must be served over HTTP(S): file:// pages cannot fetch the wasm parts or game data.
+4. HTTP(S) is recommended. A saved copy opened with file:// also works: the loader falls back to the
+   pinned CDN root for the wasm parts and game data instead of looking beside the HTML file.
 
 5. This is the cooperative build. The ?mt threaded module (rexcomp_mt.js/wasm) is not included.
 
