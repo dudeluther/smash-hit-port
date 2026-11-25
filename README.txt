@@ -4,11 +4,10 @@ Smash Hit - web share bundle
 Upload the CONTENTS of this folder to a GitHub repository (root, or a subfolder).
 index.html is the page; it loads rexcomp.wasm.00/.01, manifest.json, image.bin and game/ from the same base URL.
 
-1. Edit <base href="./"> near the top of index.html:
-   - files served beside index.html (GitHub Pages, any static host): leave "./"
-   - page hosted elsewhere, game files from jsDelivr:
-       <base href="https://cdn.jsdelivr.net/gh/USER/REPO@main/">
-   If the bundle is in a subfolder, include it: .../REPO@main/share/
+1. The page is pinned to the jsDelivr copy of this repo with:
+       <base href="https://cdn.jsdelivr.net/gh/dudeluther/smash-hit-port@main/">
+   Change that line only if the repo or branch changes. If index.html is served beside the files
+   and should use local assets instead, use <base href="./">.
 
 2. Open the page over HTTP(S), for example:
    https://cdn.jsdelivr.net/gh/USER/REPO@main/index.html
